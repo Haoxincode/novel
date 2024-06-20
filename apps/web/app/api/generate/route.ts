@@ -1,25 +1,39 @@
-import { Ratelimit } from "@upstash/ratelimit";
-import { kv } from "@vercel/kv";
-import { OpenAIStream, StreamingTextResponse } from "ai";
 import OpenAI from "openai";
-import type { ChatCompletionMessageParam } from "openai/resources/index.mjs";
+import { OpenAIStream, StreamingTextResponse } from "ai";
+import { kv } from "@vercel/kv";
+import { Ratelimit } from "@upstash/ratelimit";
 import { match } from "ts-pattern";
+import type { ChatCompletionMessageParam } from "openai/resources/index.mjs";
 
 // Create an OpenAI API client (that's edge friendly!)
+// Using LLamma's OpenAI client:
 
 // IMPORTANT! Set the runtime to edge: https://vercel.com/docs/functions/edge-functions/edge-runtime
-export const runtime = "edge";
+//export const runtime = "edge";
+
+/*const apiKey= process.env.OPENAI_API_KEY
+  const llama = new OpenAI({
+  apiKey: "ollama",
+  baseURL: "http://localhost:11434/v1",
+}); */
+
+export const maxDuration = 60 
 
 export async function POST(req: Request): Promise<Response> {
-  const openai = new OpenAI({
+
+  //OpenAI接口
+/*   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
     baseURL: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
   });
   // Check if the OPENAI_API_KEY is set, if not return 400
   if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "") {
-    return new Response("Missing OPENAI_API_KEY - make sure to add it to your .env file.", {
-      status: 400,
-    });
+    return new Response(
+      "Missing OPENAI_API_KEY - make sure to add it to your .env file.",
+      {
+        status: 400,
+      },
+    );
   }
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     const ip = req.headers.get("x-forwarded-for");
@@ -28,7 +42,9 @@ export async function POST(req: Request): Promise<Response> {
       limiter: Ratelimit.slidingWindow(50, "1 d"),
     });
 
-    const { success, limit, reset, remaining } = await ratelimit.limit(`novel_ratelimit_${ip}`);
+    const { success, limit, reset, remaining } = await ratelimit.limit(
+      `novel_ratelimit_${ip}`,
+    );
 
     if (!success) {
       return new Response("You have reached your request limit for the day.", {
@@ -40,71 +56,56 @@ export async function POST(req: Request): Promise<Response> {
         },
       });
     }
-  }
+  } */
 
-  const { prompt, option, command } = await req.json();
+  let { prompt, option, command } = await req.json();
   const messages = match(option)
-    .with("continue", () => [
-      {
-        role: "system",
-        content:
-          "You are an AI writing assistant that continues existing text based on context from prior text. " +
-          "Give more weight/priority to the later characters than the beginning ones. " +
-          "Limit your response to no more than 200 characters, but make sure to construct complete sentences." +
-          "Use Markdown formatting when appropriate.",
-      },
+    .with("translate", () => [
       {
         role: "user",
-        content: prompt,
-      },
-    ])
-    .with("improve", () => [
-      {
-        role: "system",
-        content:
-          "You are an AI writing assistant that improves existing text. " +
-          "Limit your response to no more than 200 characters, but make sure to construct complete sentences." +
-          "Use Markdown formatting when appropriate.",
-      },
-      {
-        role: "user",
-        content: `The existing text is: ${prompt}`,
+        content: `translate: ${prompt}`,
       },
     ])
     .with("shorter", () => [
       {
-        role: "system",
-        content:
-          "You are an AI writing assistant that shortens existing text. " + "Use Markdown formatting when appropriate.",
-      },
-      {
         role: "user",
-        content: `The existing text is: ${prompt}`,
+        content: `Make shorter: ${prompt}`,
       },
     ])
     .with("longer", () => [
       {
-        role: "system",
-        content:
-          "You are an AI writing assistant that lengthens existing text. " +
-          "Use Markdown formatting when appropriate.",
-      },
-      {
         role: "user",
-        content: `The existing text is: ${prompt}`,
+        content: `Make longer: ${prompt}`,
       },
     ])
-    .with("fix", () => [
-      {
-        role: "system",
-        content:
-          "You are an AI writing assistant that fixes grammar and spelling errors in existing text. " +
-          "Limit your response to no more than 200 characters, but make sure to construct complete sentences." +
-          "Use Markdown formatting when appropriate.",
-      },
+    .with("refine", () => [
       {
         role: "user",
-        content: `The existing text is: ${prompt}`,
+        content: `refine usecase: ${prompt}`,
+      },
+    ])
+    .with("testcase", () => [
+      {
+        role: "user",
+        content: `generate testcase: ${prompt}.`,
+      },
+    ])
+    .with("requirement", () => [
+      {
+        role: "user",
+        content: `generate requirement: ${prompt}. `,
+      },
+    ])
+    .with("fmea", () => [
+      {
+        role: "user",
+        content: `FMEA analysis: ${prompt}. `,
+      },
+    ])
+    .with("sequence", () => [
+      {
+        role: "user",
+        content: `generate sequence diagram: ${prompt}. `,
       },
     ])
     .with("zap", () => [
@@ -122,7 +123,8 @@ export async function POST(req: Request): Promise<Response> {
     ])
     .run() as ChatCompletionMessageParam[];
 
-  const response = await openai.chat.completions.create({
+    //OpenAI接口
+/*   // const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
     stream: true,
     messages,
@@ -131,7 +133,21 @@ export async function POST(req: Request): Promise<Response> {
     frequency_penalty: 0,
     presence_penalty: 0,
     n: 1,
+  }); */
+
+  const response = await fetch(`${process.env.DIFY2OPENAI_URL}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.DIFY_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'dify',
+      stream: true,
+      messages,
+    }),
   });
+
 
   // Convert the response into a friendly text-stream
   const stream = OpenAIStream(response);
