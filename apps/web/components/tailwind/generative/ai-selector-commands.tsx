@@ -9,7 +9,6 @@ import {
   ScrollText,
 } from "lucide-react";
 import { useEditor } from "novel";
-import { getPrevText } from "novel/extensions";
 
 const options = [
   {
