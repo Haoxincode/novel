@@ -14,6 +14,7 @@ import { Markdown } from "tiptap-markdown";
 import CustomKeymap from "./custom-keymap";
 import { ImageResizer } from "./image-resizer";
 import { Twitter } from "./twitter";
+import { Mathematics } from "./mathematics";
 import UpdatedImage from "./updated-image";
 
 import CharacterCount from "@tiptap/extension-character-count";
@@ -31,20 +32,14 @@ const PlaceholderExtension = Placeholder.configure({
   includeChildren: true,
 });
 
-const simpleExtensions = [
-  TiptapUnderline,
-  TextStyle,
-  Color,
-  Highlight.configure({
-    multicolor: true,
-  }),
+const HighlightExtension = Highlight.configure({
+  multicolor: true,
+});
 
-  Markdown.configure({
-    html: false,
-    transformCopiedText: true,
-  }),
-  CustomKeymap,
-] as const;
+const MarkdownExtension = Markdown.configure({
+  html: false,
+  transformCopiedText: true,
+});
 
 const Horizontal = HorizontalRule.extend({
   addInputRules() {
@@ -77,11 +72,17 @@ export {
   TaskItem,
   TaskList,
   TiptapImage,
+  TiptapUnderline,
+  MarkdownExtension,
+  TextStyle,
+  Color,
+  HighlightExtension,
+  CustomKeymap,
   TiptapLink,
   UpdatedImage,
-  simpleExtensions,
   Youtube,
   Twitter,
+  Mathematics,
   CharacterCount,
   GlobalDragHandle,
 };
